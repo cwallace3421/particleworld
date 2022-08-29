@@ -1,3 +1,8 @@
+import hl.Format.PixelFormat;
+import h2d.Tile;
+import h2d.Graphics;
+import h3d.mat.Texture;
+import format.tar.Data;
 import hxd.BitmapData;
 import h2d.Text;
 import hxd.Event;
@@ -9,13 +14,18 @@ import hxd.res.DefaultFont;
 
 class Main extends hxd.App {
 
-  static var DRAW_SIZE = 10;
+  static var DRAW_SIZE = 4;
   static var DRAW_COLOR : Int = 0xFFFF0000;
+  static var BACKGROUND_COLOR : Int = 0xFF000000;
 
   var debugText: Text;
   var screenPixels : Pixels;
+  var screenTile : Tile;
   var screenTexture : Bitmap;
   var interaction : Interactive;
+  // var tex : Texture;
+
+  var mouseDown : Bool = false;
 
   var dirty : Bool = false;
 
@@ -23,11 +33,14 @@ class Main extends hxd.App {
     debugText = new Text(DefaultFont.get(), s2d);
     debugText.text = s2d.width + " - " + s2d.height;
 
-    screenPixels = Pixels.alloc(s2d.width, s2d.height, PixelFormat.ARGB);
-    this.generateScreenTexture();
+    screenPixels = Pixels.alloc(1024, 1024, PixelFormat.ARGB);
+    screenTile = Tile.fromPixels(screenPixels);
+    screenTexture = new Bitmap(screenTile, s2d);
 
-    interaction = new Interactive(s2d.width, s2d.height, screenTexture);
-    interaction.onClick = this.onMouseClick;
+    interaction = new Interactive(s2d.width, s2d.height, s2d);
+    interaction.onPush = this.onMousePush;
+    interaction.onRelease = this.onMouseRelease;
+    interaction.onMove = this.onMouseMove;
   }
 
   override function update(dt : Float) {
@@ -41,25 +54,37 @@ class Main extends hxd.App {
     new Main();
   }
 
-  private function onMouseClick(event : Event) {
-    var x = hxd.Math.floor(event.relX);
-    var y = hxd.Math.floor(event.relY);
-    var max_x = cast(Math.min(x + DRAW_SIZE, 1000), Int);
-    var max_y = cast(Math.min(y + DRAW_SIZE, 1000), Int);
+  private function onMouseMove(event : Event) {
+    if (mouseDown) {
+      var min_x = cast(Math.max(event.relX - DRAW_SIZE, 0), Int);
+      var min_y = cast(Math.max(event.relY - DRAW_SIZE, 0), Int);
+      var max_x = cast(Math.min(event.relX + DRAW_SIZE, 1000), Int);
+      var max_y = cast(Math.min(event.relY + DRAW_SIZE, 1000), Int);
 
-    debugText.text = x + " - " + y;
+      debugText.text = min_x + " - " + min_y;
 
-    for (i in x...max_x) {
-      for (j in y...max_y) {
-        screenPixels.setPixel(i, j, DRAW_COLOR);
+      for (i in min_x...max_x) {
+        for (j in min_y...max_y) {
+          screenPixels.setPixel(i, j, DRAW_COLOR);
+        }
       }
+      dirty = true;
     }
-    dirty = true;
+  }
+
+  private function onMousePush(event : Event) {
+    mouseDown = true;
+  }
+
+  private function onMouseRelease(event : Event) {
+    mouseDown = false;
   }
 
   private function generateScreenTexture() {
-    var tile = h2d.Tile.fromPixels(screenPixels);
-    screenTexture = new Bitmap(tile, s2d);
+    if (screenTexture != null) {
+      screenTexture.tile.getTexture().clear(BACKGROUND_COLOR);
+      screenTexture.tile.getTexture().uploadPixels(screenPixels);
+    }
   }
 
 }
