@@ -1,0 +1,6 @@
+-cp src
+-lib heaps
+-lib hlsdl
+-hl build/particle_world.hl
+-main Main
+-D windowSize=1000x1000
